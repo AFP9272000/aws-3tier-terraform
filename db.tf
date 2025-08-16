@@ -1,5 +1,5 @@
 ############################################
-# Private networking (your original blocks)
+# Private networking (original blocks)
 ############################################
 
 # Private subnets (2 AZs)
