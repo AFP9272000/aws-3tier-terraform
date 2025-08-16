@@ -63,7 +63,7 @@ variable "db_username" {
 }
 
 variable "db_password" {
-  description = "DB password (set in terraform.tfvars; do not commit)"
+  description = "DB password (set in terra)"
   type        = string
   sensitive   = true
 }
@@ -73,7 +73,7 @@ variable "db_allocated_storage" {
   default = 20
 }
 variable "site_bucket_name" {
-  description = "Globally-unique S3 bucket name for the frontend (e.g., addison-3tier-site-1234)"
+  description = "Globally-unique S3 bucket name for the frontend (like addison-3tier)"
   type        = string
 }
 
@@ -83,13 +83,13 @@ variable "default_root_object" {
   default     = "index.html"
 }
 variable "enable_ssh" {
-  description = "Allow SSH to EC2 from your IP"
+  description = "Allow SSH to EC2 from my IP"
   type        = bool
   default     = true
 }
 
 variable "ssh_ingress_cidr" {
-  description = "Your public IP in CIDR form (x.x.x.x/32)"
+  description = "public IP in CIDR form (x.x.x.x/32)"
   type        = string
   default     = "0.0.0.0/32"
 }
