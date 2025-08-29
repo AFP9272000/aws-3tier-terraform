@@ -1,10 +1,24 @@
-# Terraform junk
+# Terraform
 .terraform/
-.terraform.lock.hcl
-terraform.tfstate
-terraform.tfstate.*
-crash.log
+.terraform.*
+.terragrunt-cache/
+*.tfstate
+*.tfstate.*
 *.tfplan
-
-# Local secrets
+crash.log
+crash.*.log
 terraform.tfvars
+*.tfvars
+
+# Secrets / creds
+.env
+.aws/
+*.pem
+*.key
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
