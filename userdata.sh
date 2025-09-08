@@ -20,7 +20,7 @@ cat >/usr/share/nginx/html/index.html <<'HTML'
 </head>
 <body>
   <div class="card">
-    <h1>🚀 Deployed with Terraform</h1>
+    <h1> Deployed with Terraform</h1>
     <p>Hello from <strong>Addison</strong>! This EC2 instance was launched via <code>terraform apply</code>.</p>
     <p>Stack: VPC + public subnets + IGW + route tables + SG + EC2 + NGINX.</p>
   </div>
