@@ -56,7 +56,7 @@ resource "aws_route_table_association" "private_assoc" {
 # Database security + subnet group + RDS
 ############################################
 
-# DB Security Group (no inline ingress; we add a separate rule below)
+# DB Security Group (no inline ingress; separate rule goes below)
 resource "aws_security_group" "db_sg" {
   name        = "${var.project_name}-db-sg"
   description = "RDS PostgreSQL SG"
