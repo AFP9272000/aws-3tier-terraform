@@ -1,4 +1,4 @@
-# -------- Core / Phase 1 --------
+# Phase 1 variables
 variable "project_name" {
   description = "Name prefix for tagging and resource naming"
   type        = string
@@ -35,7 +35,7 @@ variable "ingress_http_cidr" {
   default     = "0.0.0.0/0"
 }
 
-# -------- Phase 2 (new) --------
+# tier 2
 variable "private_subnet_cidrs" {
   description = "Two private subnets across AZs"
   type        = list(string)
