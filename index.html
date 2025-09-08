@@ -4,24 +4,44 @@
     <meta charset="utf-8" />
     <title>Addison | CloudFront Site</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <style>
-      body{font-family:system-ui,Segoe UI,Arial;margin:40px;line-height:1.6}
-      .card{max-width:720px;margin:auto;padding:28px;border-radius:18px;box-shadow:0 10px 32px rgba(0,0,0,.08)}
-      h1{margin:0 0 10px}
-      code{background:#f4f4f7;padding:3px 6px;border-radius:6px}
-      a{word-break:break-all}
-    </style>
+<style>
+  html, body { height: 100%; }
+  body{
+    margin: 0;
+    min-height: 100vh;
+    font-family: system-ui, Segoe UI, Arial;
+    line-height: 1.6;
+    background-image: url("DjzK_EnW4AEkCaP.jpg"); /* relative to index */
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+  }
+  .page{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:40px; }
+ .card {
+  max-width:720px;
+  width:100%;
+  padding:28px;
+  border-radius:18px;
+  box-shadow:0 10px 32px rgba(0,0,0,.18);
+  background: rgba(255,255,255,.92);
+  backdrop-filter: saturate(120%) blur(2px);
+
+  /* add these */
+  margin: 40px auto;
+}
+
+</style>
   </head>
   <body>
     <div class="card">
-      <h1>🌍 Served by CloudFront</h1>
-      <p>This static site is stored in a private S3 bucket and delivered globally through CloudFront with an Origin Access Control.</p>
+      <h1> Deployed by CloudFront</h1>
+      <p>This static website is stored in a private S3 bucket and delivered globally through CloudFront with an Origin Access Control.</p>
       <ul>
         <li>Infra as Code: <code>Terraform</code></li>
-        <li>Backend: EC2 (public) → RDS (private)</li>
-        <li>Frontend: S3 (private) → CloudFront (public)</li>
+        <li>Backend: EC2 (public) -> RDS (private)</li>
+        <li>Frontend: S3 (private) -> CloudFront (public)</li>
       </ul>
-      <p>Built by <strong>Addison</strong>. 🚀</p>
+      <p>Built by <strong>Addison Pirlo</strong>. </p>
     </div>
   </body>
 </html>
