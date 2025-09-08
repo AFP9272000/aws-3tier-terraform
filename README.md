@@ -16,7 +16,6 @@ terraform fmt
 terraform init
 terraform plan -out=tfplan
 terraform apply
-```bash
 
 > **Certs:** AWS SAA (earned). Studying Security+.  
 > **Purpose:** Show real-world AWS + Security practices in a portfolio-ready project.
