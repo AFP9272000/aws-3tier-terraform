@@ -8,6 +8,10 @@ This project provisions a secure 3-tier architecture on AWS using Terraform:
 - **Networking:** VPC, public & private subnets, IGW, NAT Gateway, route tables
 - **Security:** Least privilege IAM, security-group-to-security-group rules, private DB (not internet accessible)
 
+- **Security Highlights:** IAM least privilege, private RDS, security group rules, CloudFront OAC, logging.
+
+To reproduce: terraform fmt -> terraform init -> terraform plan -out=tfplan -> terraform apply
+
 > **Certs:** AWS SAA (earned). Studying Security+.  
 > **Purpose:** Show real-world AWS + Security practices in a portfolio-ready project.
 
