@@ -1,4 +1,3 @@
-```markdown
 # Secure 3‑Tier AWS Architecture — Terraform
 
 A compact, production‑minded Terraform configuration that provisions a secure three‑tier web stack on AWS. This repository demonstrates infrastructure-as-code best practices and DevSecOps controls: private origins, encryption, least‑privilege network rules, centralized tagging, logging, and a Web Application Firewall (WAF).
@@ -26,47 +25,50 @@ A compact, production‑minded Terraform configuration that provisions a secure 
 
 ## Architecture diagram
 
-Below is a mermaid diagram that visualises the deployed architecture: CloudFront with WAF in front of the private S3 origin, an EC2 web server in public subnets, a private RDS instance in private subnets, NAT for outbound access, and dedicated logging storage.
+Below is a Mermaid diagram that visualizes the deployed architecture.
 
 ```mermaid
 flowchart LR
+  %% === Edge Layer ===
   subgraph Edge
-    CF[CloudFront Distribution]
     WAF[WAF Web ACL]
+    CF[CloudFront Distribution]
   end
 
-  subgraph AWS_S3 [AWS S3]
-    SiteBucket["Site S3 Bucket\n(private, versioned, SSE)"]
-    LogBucket["Log S3 Bucket\n(versioned, SSE)"]
+  %% === S3 Buckets ===
+  subgraph S3["S3 Buckets"]
+    SiteBucket["Site Bucket (private, versioned, SSE)"]
+    LogBucket["Log Bucket (versioned, SSE)"]
   end
 
-  subgraph VPC [VPC]
+  %% === VPC ===
+  subgraph VPC["VPC"]
     subgraph Public["Public Subnets"]
-      EC2[EC2 (NGINX)\nsecurity-group: web-sg]
-      IGW[Internet Gateway]
-      NAT[NAT Gateway]
+      EC2["EC2 (NGINX)\nSG: web-sg"]
+      NAT["NAT Gateway"]
+      IGW["Internet Gateway"]
     end
 
     subgraph Private["Private Subnets"]
-      RDS[RDS (Postgres)\nsecurity-group: db-sg]
-      DBSubnetGroup[(DB Subnet Group)]
+      RDS["RDS (Postgres)\nSG: db-sg"]
+      DBSubnetGroup["DB Subnet Group"]
     end
   end
 
-  CF -->|requests over HTTPS| SiteBucket
-  CF -.->|access logs| LogBucket
-  CF -->|protected by| WAF
+  %% === Connections ===
+  CF -->|HTTPS requests| SiteBucket
+  CF -.->|Access Logs| LogBucket
+  CF -->|Protected by| WAF
 
-  EC2 -->|serves app / proxy| CF
-  EC2 -->|connects to| RDS
-  EC2 -->|outbound via| NAT
+  EC2 -->|Serves app / proxy| CF
+  EC2 -->|Connects to| RDS
+  EC2 -->|Outbound via| NAT
   NAT --> IGW
 
+  %% === Style ===
   classDef svc fill:#f9f,stroke:#333,stroke-width:1px;
-  class CF,WAF,SiteBucket,LogBucket,EC2,RDS,NAT svc
-```
+  class CF,WAF,SiteBucket,LogBucket,EC2,RDS,NAT svc;
 
----
 
 ## Files overview
 
