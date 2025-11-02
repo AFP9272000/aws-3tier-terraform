@@ -23,53 +23,6 @@ A compact, production‑minded Terraform configuration that provisions a secure 
 
 ---
 
-## Architecture diagram
-
-Below is a Mermaid diagram that visualizes the deployed architecture.
-
-```mermaid
-flowchart LR
-  %% === Edge Layer ===
-  subgraph Edge
-    WAF[WAF Web ACL]
-    CF[CloudFront Distribution]
-  end
-
-  %% === S3 Buckets ===
-  subgraph S3["S3 Buckets"]
-    SiteBucket["Site Bucket (private, versioned, SSE)"]
-    LogBucket["Log Bucket (versioned, SSE)"]
-  end
-
-  %% === VPC ===
-  subgraph VPC["VPC"]
-    subgraph Public["Public Subnets"]
-      EC2["EC2 (NGINX)\nSG: web-sg"]
-      NAT["NAT Gateway"]
-      IGW["Internet Gateway"]
-    end
-
-    subgraph Private["Private Subnets"]
-      RDS["RDS (Postgres)\nSG: db-sg"]
-      DBSubnetGroup["DB Subnet Group"]
-    end
-  end
-
-  %% === Connections ===
-  CF -->|HTTPS requests| SiteBucket
-  CF -.->|Access Logs| LogBucket
-  CF -->|Protected by| WAF
-
-  EC2 -->|Serves app / proxy| CF
-  EC2 -->|Connects to| RDS
-  EC2 -->|Outbound via| NAT
-  NAT --> IGW
-
-  %% === Style ===
-  classDef svc fill:#f9f,stroke:#333,stroke-width:1px;
-  class CF,WAF,SiteBucket,LogBucket,EC2,RDS,NAT svc;
-
-
 ## Files overview
 
 File | Purpose
