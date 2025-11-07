@@ -5,8 +5,6 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-  pull_request_target:
-    branches: [ "main" ]
   schedule:
     - cron: '0 9 * * 1'  # Weekly drift detection - Monday 9 AM UTC
   workflow_dispatch:  # Manual trigger
@@ -14,7 +12,7 @@ on:
 env:
   TF_WORKING_DIR: .
   TF_VERSION: 1.6.0
-  AWS_REGION: us-east-1
+  AWS_REGION: us-east-2  # ← Your region
 
 # Prevent concurrent runs
 concurrency:
@@ -95,23 +93,15 @@ jobs:
           sarif_file: tfsec.sarif
           category: tfsec
 
-      - name: Terrascan IaC Scanner
-        uses: tenable/terrascan-action@main
-        with:
-          iac_type: 'terraform'
-          iac_dir: ${{ env.TF_WORKING_DIR }}
-          sarif_upload: true
-        continue-on-error: true
-
       - name: Check for Remote State Backend
         run: |
-          echo "🔍 Verifying remote state configuration..."
+          echo " Verifying remote state configuration..."
           if grep -rq "backend.*\"s3\"" ${{ env.TF_WORKING_DIR }}/*.tf; then
-            echo "✅ S3 backend detected"
+            echo " S3 backend detected"
           elif grep -rq "backend.*\"remote\"" ${{ env.TF_WORKING_DIR }}/*.tf; then
-            echo "✅ Remote backend detected"
+            echo " Remote backend detected"
           else
-            echo "⚠️ WARNING: No remote backend detected. State should be stored remotely!"
+            echo " WARNING: No remote backend detected. State should be stored remotely!"
             exit 1
           fi
 
@@ -146,22 +136,14 @@ jobs:
         id: validate
         run: terraform -chdir=${{ env.TF_WORKING_DIR }} validate -no-color
 
-      - name: Generate Terraform Docs
-        uses: terraform-docs/gh-actions@f6d59f89a280fa0a3febf55ef68f146784b20ba0 # v1.0.0
-        with:
-          working-dir: ${{ env.TF_WORKING_DIR }}
-          output-file: TERRAFORM_DOCS.md
-          output-method: inject
-          fail-on-diff: false
-
       - name: Validation Results Comment
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         if: github.event_name == 'pull_request'
         with:
           script: |
-            const output = `#### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
-            #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
-            #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
+            const output = `#### Terraform Format and Style \`${{ steps.fmt.outcome }}\`
+            #### Terraform Initialization \`${{ steps.init.outcome }}\`
+            #### Terraform Validation \`${{ steps.validate.outcome }}\`
             
             <details><summary>Validation Output</summary>
             
@@ -230,30 +212,6 @@ jobs:
           path: plan_output.txt
           retention-days: 30
 
-      - name: Setup Infracost
-        uses: infracost/actions/setup@1e2cacf774c8d87f43c88dc97e9e5f81d6d1c85c # v3.0.0
-        if: github.event_name == 'pull_request'
-        with:
-          api-key: ${{ secrets.INFRACOST_API_KEY }}
-
-      - name: Generate Infracost JSON
-        if: github.event_name == 'pull_request'
-        run: |
-          infracost breakdown --path=${{ env.TF_WORKING_DIR }}/tfplan \
-            --format=json \
-            --out-file=/tmp/infracost.json
-        continue-on-error: true
-
-      - name: Post Infracost Comment
-        if: github.event_name == 'pull_request'
-        run: |
-          infracost comment github --path=/tmp/infracost.json \
-            --repo=$GITHUB_REPOSITORY \
-            --github-token=${{ secrets.GITHUB_TOKEN }} \
-            --pull-request=${{ github.event.pull_request.number }} \
-            --behavior=update
-        continue-on-error: true
-
       - name: Comment Plan on PR
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         if: github.event_name == 'pull_request'
@@ -265,7 +223,7 @@ jobs:
               planOutput.substring(0, 65000) + '\n\n... (truncated)' : 
               planOutput;
             
-            const output = `#### Terraform Plan 📖 \`${{ steps.plan.outcome }}\`
+            const output = `#### Terraform Plan \`${{ steps.plan.outcome }}\`
             
             <details><summary>Show Plan</summary>
             
@@ -394,7 +352,7 @@ jobs:
             github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: '🚨 Infrastructure Drift Detected',
+              title: ' Infrastructure Drift Detected',
               body: `## Drift Detection Report
               
               **Date:** ${new Date().toISOString()}
@@ -422,20 +380,4 @@ jobs:
 
       - name: Notify on Success
         if: steps.drift.outputs.exitcode == 0
-        run: echo "✅ No drift detected - infrastructure matches desired state"
-
-  notify-failure:
-    name: Notify on Failure
-    runs-on: ubuntu-latest
-    needs: [security-scan, terraform-validate, terraform-plan, terraform-apply]
-    if: failure()
-    permissions:
-      contents: read
-    
-    steps:
-      - name: Notify Failure
-        run: |
-          echo "❌ Workflow failed. Check the logs for details."
-          echo "Configure Slack/Teams/Email notifications here"
-          # Add your notification logic here
-          # Example: Slack webhook, Teams webhook, or email action
+        run: echo " No drift detected - infrastructure matches desired state"
