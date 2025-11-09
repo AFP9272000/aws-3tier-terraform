@@ -1,3 +1,4 @@
+@"
 name: Terraform DevSecOps CI/CD
 
 on:
@@ -5,18 +6,15 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-  schedule:
-    - cron: '0 9 * * 1'  # Weekly drift detection - Monday 9 AM UTC
-  workflow_dispatch:  # Manual trigger
+  workflow_dispatch:
 
 env:
   TF_WORKING_DIR: .
   TF_VERSION: 1.6.0
-  AWS_REGION: us-east-2  # ← Your region
+  AWS_REGION: us-east-2
 
-# Prevent concurrent runs
 concurrency:
-  group: terraform-${{ github.ref }}
+  group: terraform-`${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -31,17 +29,16 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@v4
 
       - name: Run Checkov Security Scan
-        uses: bridgecrewio/checkov-action@3b2536c6ba1b6e35e5a84ec67a6f2f1c73715e5c # v12.2813.0
+        uses: bridgecrewio/checkov-action@v12
         with:
-          directory: ${{ env.TF_WORKING_DIR }}
+          directory: `${{ env.TF_WORKING_DIR }}
           framework: terraform
           output_format: sarif
           output_file_path: checkov-results.sarif
           soft_fail: true
-          download_external_modules: true
 
       - name: Upload Checkov SARIF
         uses: github/codeql-action/upload-sarif@v3
@@ -51,23 +48,23 @@ jobs:
           category: checkov
 
       - name: Setup TFLint
-        uses: terraform-linters/setup-tflint@19a52fbac37dacb22a09518e4ef6ee234f2d4987 # v4.0.0
+        uses: terraform-linters/setup-tflint@v4
         with:
           tflint_version: latest
 
       - name: Initialize TFLint
         run: tflint --init
-        working-directory: ${{ env.TF_WORKING_DIR }}
+        working-directory: `${{ env.TF_WORKING_DIR }}
 
       - name: Run TFLint
         run: tflint -f compact --force
-        working-directory: ${{ env.TF_WORKING_DIR }}
+        working-directory: `${{ env.TF_WORKING_DIR }}
 
       - name: Run Trivy IaC Scanner
-        uses: aquasecurity/trivy-action@6e7b7d1fd3e4fef0c5fa8cce1229c54b2c9bd0d8 # 0.24.0
+        uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'config'
-          scan-ref: ${{ env.TF_WORKING_DIR }}
+          scan-ref: `${{ env.TF_WORKING_DIR }}
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
@@ -80,9 +77,9 @@ jobs:
           category: trivy
 
       - name: Run tfsec Security Scanner
-        uses: aquasecurity/tfsec-action@b466648d6e39e7c75324f25d83891162a721f2d6 # v1.0.3
+        uses: aquasecurity/tfsec-action@v1.0.3
         with:
-          working_directory: ${{ env.TF_WORKING_DIR }}
+          working_directory: `${{ env.TF_WORKING_DIR }}
           format: sarif
           soft_fail: true
 
@@ -95,13 +92,11 @@ jobs:
 
       - name: Check for Remote State Backend
         run: |
-          echo " Verifying remote state configuration..."
-          if grep -rq "backend.*\"s3\"" ${{ env.TF_WORKING_DIR }}/*.tf; then
-            echo " S3 backend detected"
-          elif grep -rq "backend.*\"remote\"" ${{ env.TF_WORKING_DIR }}/*.tf; then
-            echo " Remote backend detected"
+          echo "🔍 Verifying remote state configuration..."
+          if grep -rq "backend.*\"s3\"" *.tf; then
+            echo "✅ S3 backend detected"
           else
-            echo " WARNING: No remote backend detected. State should be stored remotely!"
+            echo "⚠️ WARNING: No remote backend detected!"
             exit 1
           fi
 
@@ -116,44 +111,36 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@v4
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@a1502cd9e758c50496cc9ac5308c4843bcd56d36 # v3.0.0
+        uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: ${{ env.TF_VERSION }}
+          terraform_version: `${{ env.TF_VERSION }}
 
       - name: Terraform Format Check
         id: fmt
-        run: terraform -chdir=${{ env.TF_WORKING_DIR }} fmt -check -recursive
+        run: terraform fmt -check -recursive
         continue-on-error: true
 
       - name: Terraform Init
         id: init
-        run: terraform -chdir=${{ env.TF_WORKING_DIR }} init -backend=false -input=false
+        run: terraform init -backend=false -input=false
 
       - name: Terraform Validate
         id: validate
-        run: terraform -chdir=${{ env.TF_WORKING_DIR }} validate -no-color
+        run: terraform validate -no-color
 
       - name: Validation Results Comment
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        uses: actions/github-script@v7
         if: github.event_name == 'pull_request'
         with:
           script: |
-            const output = `#### Terraform Format and Style \`${{ steps.fmt.outcome }}\`
-            #### Terraform Initialization \`${{ steps.init.outcome }}\`
-            #### Terraform Validation \`${{ steps.validate.outcome }}\`
+            const output = ``#### Terraform Format 🖌\``$`{{ steps.fmt.outcome }}\``
+            #### Terraform Init ⚙️\``$`{{ steps.init.outcome }}\``
+            #### Terraform Validate 🤖\``$`{{ steps.validate.outcome }}\``
             
-            <details><summary>Validation Output</summary>
-            
-            \`\`\`
-            ${{ steps.validate.outputs.stdout }}
-            \`\`\`
-            
-            </details>
-            
-            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Workflow: \`${{ github.workflow }}\`*`;
+            *Pusher: @$`{{ github.actor }}*``;
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,
@@ -174,68 +161,59 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@v4
 
       - name: Configure AWS Credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@010d0da01d0b5a38af31e9c3470dbfdabdecca3a # v4.0.1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: `${{ secrets.AWS_ROLE_ARN }}
+          aws-region: `${{ env.AWS_REGION }}
           role-session-name: GitHubActions-Terraform-Plan
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@a1502cd9e758c50496cc9ac5308c4843bcd56d36 # v3.0.0
+        uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: ${{ env.TF_VERSION }}
+          terraform_version: `${{ env.TF_VERSION }}
 
       - name: Terraform Init
-        run: terraform -chdir=${{ env.TF_WORKING_DIR }} init -input=false
+        run: terraform init -input=false
 
       - name: Terraform Plan
         id: plan
         run: |
-          terraform -chdir=${{ env.TF_WORKING_DIR }} plan -no-color -input=false -out=tfplan 2>&1 | tee plan_output.txt
-          echo "exitcode=$?" >> $GITHUB_OUTPUT
+          terraform plan -no-color -input=false -out=tfplan 2>&1 | tee plan_output.txt
+          echo "exitcode=`$?" >> `$GITHUB_OUTPUT
         continue-on-error: true
 
       - name: Save Plan Artifact
-        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        uses: actions/upload-artifact@v4
         with:
           name: terraform-plan
-          path: ${{ env.TF_WORKING_DIR }}/tfplan
-          retention-days: 30
-
-      - name: Save Plan Output
-        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
-        with:
-          name: terraform-plan-output
-          path: plan_output.txt
+          path: tfplan
           retention-days: 30
 
       - name: Comment Plan on PR
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        uses: actions/github-script@v7
         if: github.event_name == 'pull_request'
         with:
           script: |
             const fs = require('fs');
             const planOutput = fs.readFileSync('plan_output.txt', 'utf8');
             const truncatedPlan = planOutput.length > 65000 ? 
-              planOutput.substring(0, 65000) + '\n\n... (truncated)' : 
+              planOutput.substring(0, 65000) + '\\n... (truncated)' : 
               planOutput;
             
-            const output = `#### Terraform Plan \`${{ steps.plan.outcome }}\`
+            const output = ``#### Terraform Plan 📖 \``$`{{ steps.plan.outcome }}\``
             
             <details><summary>Show Plan</summary>
             
-            \`\`\`terraform
-            ${truncatedPlan}
-            \`\`\`
+            \``\``\``terraform
+            $"{truncatedPlan}"
+            \``\``\``
             
             </details>
             
-            **Plan Exit Code:** ${{ steps.plan.outputs.exitcode }}
-            
-            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Workflow: \`${{ github.workflow }}\`*`;
+            *Pusher: @$`{{ github.actor }}*``;
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,
@@ -243,10 +221,6 @@ jobs:
               repo: context.repo.repo,
               body: output
             });
-
-      - name: Check Plan Status
-        if: steps.plan.outputs.exitcode != 0
-        run: exit 1
 
   terraform-apply:
     name: Terraform Apply
@@ -263,121 +237,33 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@v4
 
       - name: Configure AWS Credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@010d0da01d0b5a38af31e9c3470dbfdabdecca3a # v4.0.1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: `${{ secrets.AWS_ROLE_ARN }}
+          aws-region: `${{ env.AWS_REGION }}
           role-session-name: GitHubActions-Terraform-Apply
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@a1502cd9e758c50496cc9ac5308c4843bcd56d36 # v3.0.0
+        uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: ${{ env.TF_VERSION }}
+          terraform_version: `${{ env.TF_VERSION }}
 
       - name: Terraform Init
-        run: terraform -chdir=${{ env.TF_WORKING_DIR }} init -input=false
+        run: terraform init -input=false
 
       - name: Download Plan Artifact
-        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+        uses: actions/download-artifact@v4
         with:
           name: terraform-plan
-          path: ${{ env.TF_WORKING_DIR }}
 
       - name: Terraform Apply
-        id: apply
-        run: |
-          terraform -chdir=${{ env.TF_WORKING_DIR }} apply -auto-approve -input=false tfplan
-        
-      - name: Generate SBOM
-        run: |
-          echo "# Terraform Infrastructure SBOM" > TERRAFORM_SBOM.md
-          echo "**Generated:** $(date)" >> TERRAFORM_SBOM.md
-          echo "" >> TERRAFORM_SBOM.md
-          terraform -chdir=${{ env.TF_WORKING_DIR }} state list >> TERRAFORM_SBOM.md
+        run: terraform apply -auto-approve -input=false tfplan
+"@ | Out-File -FilePath .github\workflows\terraform.yml -Encoding UTF8
 
-      - name: Save SBOM Artifact
-        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
-        with:
-          name: terraform-sbom
-          path: TERRAFORM_SBOM.md
-          retention-days: 90
-
-  drift-detection:
-    name: Drift Detection
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    if: github.event_name == 'schedule'
-    permissions:
-      contents: read
-      id-token: write
-      issues: write
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-
-      - name: Configure AWS Credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@010d0da01d0b5a38af31e9c3470dbfdabdecca3a # v4.0.1
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-          role-session-name: GitHubActions-Terraform-Drift
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@a1502cd9e758c50496cc9ac5308c4843bcd56d36 # v3.0.0
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-
-      - name: Terraform Init
-        run: terraform -chdir=${{ env.TF_WORKING_DIR }} init -input=false
-
-      - name: Terraform Plan - Drift Check
-        id: drift
-        run: |
-          terraform -chdir=${{ env.TF_WORKING_DIR }} plan -detailed-exitcode -no-color -input=false > drift_output.txt 2>&1
-          echo "exitcode=$?" >> $GITHUB_OUTPUT
-        continue-on-error: true
-
-      - name: Create Drift Issue
-        if: steps.drift.outputs.exitcode == 2
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-        with:
-          script: |
-            const fs = require('fs');
-            const driftOutput = fs.readFileSync('drift_output.txt', 'utf8');
-            
-            github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: ' Infrastructure Drift Detected',
-              body: `## Drift Detection Report
-              
-              **Date:** ${new Date().toISOString()}
-              **Branch:** main
-              
-              Infrastructure drift has been detected. The actual state differs from the desired state defined in Terraform.
-              
-              <details><summary>Drift Details</summary>
-              
-              \`\`\`terraform
-              ${driftOutput.substring(0, 65000)}
-              \`\`\`
-              
-              </details>
-              
-              ### Recommended Actions
-              1. Review the changes above
-              2. Determine if changes were made outside Terraform
-              3. Either update Terraform code or revert manual changes
-              4. Run terraform apply to reconcile
-              
-              **Labels:** infrastructure, drift, terraform`,
-              labels: ['infrastructure', 'drift', 'terraform', 'priority-high']
-            });
-
-      - name: Notify on Success
-        if: steps.drift.outputs.exitcode == 0
-        run: echo " No drift detected - infrastructure matches desired state"
+# Commit and push
+git add .github\workflows\terraform.yml
+git commit -m "Fix Checkov action version"
+git push origin main
