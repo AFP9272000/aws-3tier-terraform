@@ -125,9 +125,3 @@ variable "waf_rate_limit" {
   type        = number
   default     = 2000
 }
-
-variable "enable_waf" {
-  description = "Whether to provision and attach a WAF Web ACL to the CloudFront distribution"
-  type        = bool
-  default     = true
-}
