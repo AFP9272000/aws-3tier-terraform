@@ -1,4 +1,3 @@
-@"
 name: Terraform DevSecOps CI/CD
 
 on:
@@ -14,7 +13,7 @@ env:
   AWS_REGION: us-east-2
 
 concurrency:
-  group: terraform-`${{ github.ref }}
+  group: terraform-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -34,7 +33,7 @@ jobs:
       - name: Run Checkov Security Scan
         uses: bridgecrewio/checkov-action@v12
         with:
-          directory: `${{ env.TF_WORKING_DIR }}
+          directory: ${{ env.TF_WORKING_DIR }}
           framework: terraform
           output_format: sarif
           output_file_path: checkov-results.sarif
@@ -54,17 +53,17 @@ jobs:
 
       - name: Initialize TFLint
         run: tflint --init
-        working-directory: `${{ env.TF_WORKING_DIR }}
+        working-directory: ${{ env.TF_WORKING_DIR }}
 
       - name: Run TFLint
         run: tflint -f compact --force
-        working-directory: `${{ env.TF_WORKING_DIR }}
+        working-directory: ${{ env.TF_WORKING_DIR }}
 
       - name: Run Trivy IaC Scanner
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'config'
-          scan-ref: `${{ env.TF_WORKING_DIR }}
+          scan-ref: ${{ env.TF_WORKING_DIR }}
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
@@ -79,7 +78,7 @@ jobs:
       - name: Run tfsec Security Scanner
         uses: aquasecurity/tfsec-action@v1.0.3
         with:
-          working_directory: `${{ env.TF_WORKING_DIR }}
+          working_directory: ${{ env.TF_WORKING_DIR }}
           format: sarif
           soft_fail: true
 
@@ -92,11 +91,11 @@ jobs:
 
       - name: Check for Remote State Backend
         run: |
-          echo "🔍 Verifying remote state configuration..."
+          echo "Verifying remote state configuration..."
           if grep -rq "backend.*\"s3\"" *.tf; then
-            echo "✅ S3 backend detected"
+            echo "S3 backend detected"
           else
-            echo "⚠️ WARNING: No remote backend detected!"
+            echo "WARNING: No remote backend detected!"
             exit 1
           fi
 
@@ -116,7 +115,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: `${{ env.TF_VERSION }}
+          terraform_version: ${{ env.TF_VERSION }}
 
       - name: Terraform Format Check
         id: fmt
@@ -136,11 +135,11 @@ jobs:
         if: github.event_name == 'pull_request'
         with:
           script: |
-            const output = ``#### Terraform Format 🖌\``$`{{ steps.fmt.outcome }}\``
-            #### Terraform Init ⚙️\``$`{{ steps.init.outcome }}\``
-            #### Terraform Validate 🤖\``$`{{ steps.validate.outcome }}\``
+            const output = `#### Terraform Format 🖌\`${{ steps.fmt.outcome }}\`
+            #### Terraform Init \`${{ steps.init.outcome }}\`
+            #### Terraform Validate \`${{ steps.validate.outcome }}\`
             
-            *Pusher: @$`{{ github.actor }}*``;
+            *Pusher: @${{ github.actor }}*`;
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,
@@ -166,14 +165,14 @@ jobs:
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: `${{ secrets.AWS_ROLE_ARN }}
-          aws-region: `${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
           role-session-name: GitHubActions-Terraform-Plan
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: `${{ env.TF_VERSION }}
+          terraform_version: ${{ env.TF_VERSION }}
 
       - name: Terraform Init
         run: terraform init -input=false
@@ -182,7 +181,7 @@ jobs:
         id: plan
         run: |
           terraform plan -no-color -input=false -out=tfplan 2>&1 | tee plan_output.txt
-          echo "exitcode=`$?" >> `$GITHUB_OUTPUT
+          echo "exitcode=$?" >> $GITHUB_OUTPUT
         continue-on-error: true
 
       - name: Save Plan Artifact
@@ -200,20 +199,20 @@ jobs:
             const fs = require('fs');
             const planOutput = fs.readFileSync('plan_output.txt', 'utf8');
             const truncatedPlan = planOutput.length > 65000 ? 
-              planOutput.substring(0, 65000) + '\\n... (truncated)' : 
+              planOutput.substring(0, 65000) + '\n... (truncated)' : 
               planOutput;
             
-            const output = ``#### Terraform Plan 📖 \``$`{{ steps.plan.outcome }}\``
+            const output = `#### Terraform Plan  \`${{ steps.plan.outcome }}\`
             
             <details><summary>Show Plan</summary>
             
-            \``\``\``terraform
-            $"{truncatedPlan}"
-            \``\``\``
+            \`\`\`terraform
+            ${truncatedPlan}
+            \`\`\`
             
             </details>
             
-            *Pusher: @$`{{ github.actor }}*``;
+            *Pusher: @${{ github.actor }}*`;
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,
@@ -242,14 +241,14 @@ jobs:
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: `${{ secrets.AWS_ROLE_ARN }}
-          aws-region: `${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
           role-session-name: GitHubActions-Terraform-Apply
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: `${{ env.TF_VERSION }}
+          terraform_version: ${{ env.TF_VERSION }}
 
       - name: Terraform Init
         run: terraform init -input=false
@@ -261,9 +260,3 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply -auto-approve -input=false tfplan
-"@ | Out-File -FilePath .github\workflows\terraform.yml -Encoding UTF8
-
-# Commit and push
-git add .github\workflows\terraform.yml
-git commit -m "Fix Checkov action version"
-git push origin main
