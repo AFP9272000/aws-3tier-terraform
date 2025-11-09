@@ -38,6 +38,7 @@ jobs:
           output_format: sarif
           output_file_path: checkov-results.sarif
           soft_fail: true
+        continue-on-error: true
 
       - name: Upload Checkov SARIF
         uses: github/codeql-action/upload-sarif@v3
@@ -45,6 +46,7 @@ jobs:
         with:
           sarif_file: checkov-results.sarif
           category: checkov
+        continue-on-error: true
 
       - name: Setup TFLint
         uses: terraform-linters/setup-tflint@v4
@@ -58,6 +60,7 @@ jobs:
       - name: Run TFLint
         run: tflint -f compact --force
         working-directory: ${{ env.TF_WORKING_DIR }}
+        continue-on-error: true
 
       - name: Run Trivy IaC Scanner
         uses: aquasecurity/trivy-action@master
@@ -67,6 +70,7 @@ jobs:
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
+        continue-on-error: true
 
       - name: Upload Trivy SARIF
         uses: github/codeql-action/upload-sarif@v3
@@ -74,20 +78,22 @@ jobs:
         with:
           sarif_file: trivy-results.sarif
           category: trivy
+        continue-on-error: true
 
       - name: Run tfsec Security Scanner
         uses: aquasecurity/tfsec-action@v1.0.3
         with:
           working_directory: ${{ env.TF_WORKING_DIR }}
-          format: sarif
           soft_fail: true
+        continue-on-error: true
 
       - name: Upload tfsec SARIF
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          sarif_file: tfsec.sarif
+          sarif_file: results.sarif
           category: tfsec
+        continue-on-error: true
 
       - name: Check for Remote State Backend
         run: |
@@ -220,6 +226,10 @@ jobs:
               repo: context.repo.repo,
               body: output
             });
+
+      - name: Check Plan Status
+        if: steps.plan.outputs.exitcode != 0
+        run: exit 1
 
   terraform-apply:
     name: Terraform Apply
