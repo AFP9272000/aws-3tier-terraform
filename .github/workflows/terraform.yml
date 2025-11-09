@@ -185,9 +185,13 @@ jobs:
 
       - name: Terraform Plan
         id: plan
+        env:
+          TF_VAR_db_password: ${{ secrets.TF_VAR_DB_PASSWORD }}
+          TF_VAR_site_bucket_name: ${{ secrets.TF_VAR_SITE_BUCKET_NAME }}
+          TF_VAR_log_bucket_name: ${{ secrets.TF_VAR_LOG_BUCKET_NAME }}
         run: |
-          terraform plan -no-color -input=false -out=tfplan 2>&1 | tee plan_output.txt
-          echo "exitcode=$?" >> $GITHUB_OUTPUT
+           terraform plan -no-color -input=false -out=tfplan 2>&1 | tee plan_output.txt
+           echo "exitcode=$?" >> $GITHUB_OUTPUT
         continue-on-error: true
 
       - name: Save Plan Artifact
@@ -269,4 +273,8 @@ jobs:
           name: terraform-plan
 
       - name: Terraform Apply
+        env:
+           TF_VAR_db_password: ${{ secrets.TF_VAR_DB_PASSWORD }}
+           TF_VAR_site_bucket_name: ${{ secrets.TF_VAR_SITE_BUCKET_NAME }}
+           TF_VAR_log_bucket_name: ${{ secrets.TF_VAR_LOG_BUCKET_NAME }}
         run: terraform apply -auto-approve -input=false tfplan
