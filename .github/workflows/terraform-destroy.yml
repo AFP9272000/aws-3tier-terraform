@@ -1,1 +1,298 @@
+name: Terraform Destroy Infrastructure
 
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type "DESTROY" to confirm infrastructure destruction'
+        required: true
+        type: string
+      target:
+        description: 'Destroy specific resource (optional - leave empty to destroy all)'
+        required: false
+        type: string
+
+env:
+  TF_WORKING_DIR: .
+  TF_VERSION: 1.6.0
+  AWS_REGION: us-east-2
+
+jobs:
+  validate-destroy-request:
+    name: Validate Destroy Request
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirmation }}" != "DESTROY" ]; then
+            echo " Confirmation failed. You must type 'DESTROY' exactly to proceed."
+            exit 1
+          fi
+          echo " Destroy confirmation validated"
+          
+      - name: Display Warning
+        run: |
+          echo " WARNING "
+          echo ""
+          echo "This will destroy the following infrastructure:"
+          echo "  • VPC and all networking components"
+          echo "  • EC2 web instance"
+          echo "  • RDS database (data will be lost!)"
+          echo "  • S3 buckets (site and logs)"
+          echo "  • CloudFront distribution"
+          echo "  • WAF Web ACL"
+          echo ""
+          echo "Target: ${{ github.event.inputs.target || 'ALL RESOURCES' }}"
+          echo ""
+          echo "Initiated by: ${{ github.actor }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "Branch: ${{ github.ref_name }}"
+
+  terraform-destroy-plan:
+    name: Terraform Destroy Plan
+    runs-on: ubuntu-latest
+    needs: validate-destroy-request
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+      issues: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-Terraform-Destroy-Plan
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        run: terraform init -input=false
+
+      - name: Terraform Destroy Plan
+        id: destroy_plan
+        env:
+          TF_VAR_db_password: ${{ secrets.TF_VAR_DB_PASSWORD }}
+          TF_VAR_site_bucket_name: ${{ secrets.TF_VAR_SITE_BUCKET_NAME }}
+          TF_VAR_log_bucket_name: ${{ secrets.TF_VAR_LOG_BUCKET_NAME }}
+        run: |
+          if [ -n "${{ github.event.inputs.target }}" ]; then
+            echo "Planning destroy for specific target: ${{ github.event.inputs.target }}"
+            terraform plan -destroy -target="${{ github.event.inputs.target }}" -no-color -input=false -out=destroy.tfplan 2>&1 | tee destroy_plan_output.txt
+          else
+            echo "Planning destroy for ALL resources"
+            terraform plan -destroy -no-color -input=false -out=destroy.tfplan 2>&1 | tee destroy_plan_output.txt
+          fi
+          echo "exitcode=$?" >> $GITHUB_OUTPUT
+
+      - name: Save Destroy Plan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-destroy-plan
+          path: destroy.tfplan
+          retention-days: 7
+
+      - name: Save Destroy Plan Output
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-destroy-plan-output
+          path: destroy_plan_output.txt
+          retention-days: 7
+
+      - name: Display Destroy Plan Summary
+        run: |
+          echo " Destroy Plan Summary"
+          echo "======================="
+          cat destroy_plan_output.txt
+          echo ""
+          echo " Review the plan above carefully before proceeding to destroy!"
+
+      - name: Create Destroy Plan Issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const planOutput = fs.readFileSync('destroy_plan_output.txt', 'utf8');
+            const truncatedPlan = planOutput.length > 65000 ? 
+              planOutput.substring(0, 65000) + '\n... (truncated)' : 
+              planOutput;
+            
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: ' Infrastructure Destroy Plan - Review Required',
+              body: `##  Infrastructure Destroy Plan
+              
+              **Requested by:** @${{ github.actor }}
+              **Date:** ${new Date().toISOString()}
+              **Target:** ${{ github.event.inputs.target || 'ALL RESOURCES' }}
+              **Workflow Run:** [View Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+              
+              ### Destroy Plan Output
+              
+              <details><summary>Click to view resources to be destroyed</summary>
+              
+              \`\`\`terraform
+              ${truncatedPlan}
+              \`\`\`
+              
+              </details>
+              
+              ###  WARNING
+              
+              This plan will **permanently delete** infrastructure components. Data loss will occur!
+              
+              ### Next Steps
+              
+              1. Review the plan above carefully
+              2. Ensure all team members are aware
+              3. Backup any critical data
+              4. Approve the destroy workflow to proceed
+              
+              **Labels:** infrastructure, destroy, critical`,
+              labels: ['infrastructure', 'destroy', 'critical', 'requires-review']
+            });
+            
+            console.log('Created issue: ' + issue.data.html_url);
+
+      - name: Check Destroy Plan Status
+        if: steps.destroy_plan.outputs.exitcode != 0
+        run: |
+          echo "Destroy plan failed. Review the errors above."
+          exit 1
+
+  terraform-destroy:
+    name: Terraform Destroy
+    runs-on: ubuntu-latest
+    needs: terraform-destroy-plan
+    timeout-minutes: 60
+    environment:
+      name: destruction
+      url: https://console.aws.amazon.com
+    permissions:
+      contents: read
+      id-token: write
+      issues: write
+    
+    steps:
+      - name: Final Confirmation Check
+        run: |
+          echo " FINAL WARNING "
+          echo ""
+          echo "You are about to DESTROY infrastructure!"
+          echo ""
+          echo "This action is IRREVERSIBLE!"
+          echo ""
+          echo "Proceeding in 10 seconds..."
+          sleep 10
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-Terraform-Destroy
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        run: terraform init -input=false
+
+      - name: Download Destroy Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-destroy-plan
+
+      - name: Terraform Destroy
+        id: destroy
+        env:
+          TF_VAR_db_password: ${{ secrets.TF_VAR_DB_PASSWORD }}
+          TF_VAR_site_bucket_name: ${{ secrets.TF_VAR_SITE_BUCKET_NAME }}
+          TF_VAR_log_bucket_name: ${{ secrets.TF_VAR_LOG_BUCKET_NAME }}
+        run: |
+          echo " Executing destroy..."
+          terraform apply -auto-approve destroy.tfplan 2>&1 | tee destroy_output.txt
+          echo " Destroy completed"
+
+      - name: Save Destroy Output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-destroy-output
+          path: destroy_output.txt
+          retention-days: 90
+
+      - name: Post Destroy Summary
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const destroyOutput = fs.existsSync('destroy_output.txt') ? 
+              fs.readFileSync('destroy_output.txt', 'utf8') : 
+              'Destroy output not available';
+            
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: ' Infrastructure Destroyed - ' + new Date().toISOString().split('T')[0],
+              body: `## Infrastructure Destruction Completed
+              
+              **Executed by:** @${{ github.actor }}
+              **Date:** ${new Date().toISOString()}
+              **Status:** ${{ steps.destroy.outcome }}
+              **Workflow Run:** [View Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+              
+              ### Resources Destroyed
+              
+              <details><summary>View destruction log</summary>
+              
+              \`\`\`
+              ${destroyOutput.substring(0, 65000)}
+              \`\`\`
+              
+              </details>
+              
+              ### Post-Destruction Checklist
+              
+              - [ ] Verify all AWS resources are deleted
+              - [ ] Check for any orphaned resources
+              - [ ] Review AWS billing for unexpected charges
+              - [ ] Update documentation
+              - [ ] Notify team members
+              
+              **Labels:** infrastructure, destroyed, audit`,
+              labels: ['infrastructure', 'destroyed', 'audit']
+            });
+
+      - name: Notify Completion
+        if: success()
+        run: |
+          echo " Infrastructure successfully destroyed!"
+          echo ""
+          echo "Please verify in AWS Console that all resources are deleted:"
+          echo "https://console.aws.amazon.com"
+
+      - name: Notify Failure
+        if: failure()
+        run: |
+          echo " Destroy failed! Check the logs above."
+          echo ""
+          echo "You may need to:"
+          echo "  1. Check for resource dependencies"
+          echo "  2. Manually delete stuck resources"
+          echo "  3. Run destroy again"
