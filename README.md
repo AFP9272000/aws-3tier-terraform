@@ -1,4 +1,4 @@
-# Secure 3‑Tier AWS Architecture — Terraform 
+# Secure 3‑Tier AWS Architecture — Terraform
 
 A compact, production‑minded Terraform configuration that provisions a secure three‑tier web stack on AWS. This repository demonstrates infrastructure-as-code best practices and DevSecOps controls: private origins, encryption, least‑privilege network rules, centralized tagging, logging, and a Web Application Firewall (WAF).
 
